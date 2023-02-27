@@ -68,11 +68,10 @@ def read_medusa():
             ip_addr = re.findall(r"Host: (.+?) User", output)
             password = re.findall(r'Password: (.+?) \[SUCCESS\]', output)
             # 插入数据到MySQL
-            if ip_addr and password:
-               def insert_data(ip_addr, password):
-                insert_data(ip_addr, password)
             output = ''
-
+            insert_data()
+        
+        
     # 返回medusa_process对象
     return medusa_process
 
