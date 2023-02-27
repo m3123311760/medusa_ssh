@@ -69,7 +69,7 @@ def read_medusa():
             password = re.findall(r'Password: (.+?) \[SUCCESS\]', output)
             # 插入数据到MySQL
             if ip_addr and password:
-               def insert_data(ip_addr[0], password[0]):
+               def insert_data(ip_addr, password):
                 insert_data(ip_addr, password)
             output = ''
 
